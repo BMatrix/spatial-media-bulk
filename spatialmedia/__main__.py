@@ -34,49 +34,70 @@ def console(contents):
   print(contents)
 
 
+def SingleInjection(inputfile, outputfile):
+  global args
+
+  metadata = metadata_utils.Metadata()
+  metadata.video = metadata_utils.generate_spherical_xml(args.stereo_mode, args.crop)
+
+  if args.spatial_audio:
+    parsed_metadata = metadata_utils.parse_metadata(inputfile, console)
+    if not metadata.audio:
+      spatial_audio_description = metadata_utils.get_spatial_audio_description(
+          parsed_metadata.num_audio_channels)
+      if spatial_audio_description.is_supported:
+        metadata.audio = metadata_utils.get_spatial_audio_metadata(
+            spatial_audio_description.order,
+            spatial_audio_description.has_head_locked_stereo)
+      else:
+        console("Audio has %d channel(s) and is not a supported spatial audio format." % (parsed_metadata.num_audio_channels))
+        return
+
+  if metadata.video:
+    metadata_utils.inject_metadata(inputfile, outputfile, metadata, console)
+  else:
+    console("Failed to generate metadata.")
+  return
+
+
 def main():
   """Main function for printing and injecting spatial media metadata."""
 
   parser = argparse.ArgumentParser(
-      usage=
-      "%(prog)s [options] [files...]\n\nBy default prints out spatial media "
-      "metadata from specified files.")
+    usage="%(prog)s [options] [files...]\n\nBy default prints out spatial media metadata from specified files.")
   parser.add_argument(
-      "-i",
-      "--inject",
-      action="store_true",
-      help=
-      "injects spatial media metadata into the first file specified (.mp4 or "
-      ".mov) and saves the result to the second file specified")
+    "-i",
+    "--inject",
+    action="store_true",
+    help="injects spatial media metadata into the first file specified (.mp4 or .mov) and saves the result to the second file specified")
   video_group = parser.add_argument_group("Spherical Video")
-  video_group.add_argument("-s",
-                           "--stereo",
-                           action="store",
-                           dest="stereo_mode",
-                           metavar="STEREO-MODE",
-                           choices=["none", "top-bottom", "left-right"],
-                           default="none",
-                           help="stereo mode (none | top-bottom | left-right)")
   video_group.add_argument(
-      "-c",
-      "--crop",
-      action="store",
-      default=None,
-      help=
-      "crop region. Must specify 6 integers in the form of \"w:h:f_w:f_h:x:y\""
-      " where w=CroppedAreaImageWidthPixels h=CroppedAreaImageHeightPixels "
-      "f_w=FullPanoWidthPixels f_h=FullPanoHeightPixels "
-      "x=CroppedAreaLeftPixels y=CroppedAreaTopPixels")
+    "-s",
+    "--stereo",
+    action="store",
+    dest="stereo_mode",
+    metavar="STEREO-MODE",
+    choices=["none", "top-bottom", "left-right"],
+    default="none",
+    help="stereo mode (none | top-bottom | left-right)")
+  video_group.add_argument(
+    "-c",
+    "--crop",
+    action="store",
+    default=None,
+    help="crop region. Must specify 6 integers in the form of \"w:h:f_w:f_h:x:y\" where w=CroppedAreaImageWidthPixels h=CroppedAreaImageHeightPixels f_w=FullPanoWidthPixels f_h=FullPanoHeightPixels x=CroppedAreaLeftPixels y=CroppedAreaTopPixels")
   audio_group = parser.add_argument_group("Spatial Audio")
   audio_group.add_argument(
-      "-a",
-      "--spatial-audio",
-      action="store_true",
-      help=
-      "spatial audio. First-order periphonic ambisonics with ACN channel "
-      "ordering and SN3D normalization")
-  parser.add_argument("file", nargs="+", help="input/output files")
+    "-a",
+    "--spatial-audio",
+    action="store_true",
+    help="spatial audio. First-order periphonic ambisonics with ACN channel ordering and SN3D normalization")
+  parser.add_argument(
+    "file",
+    nargs="+",
+    help="input/output files")
 
+  global args
   args = parser.parse_args()
 
   if args.inject:
@@ -84,37 +105,14 @@ def main():
       console("Injecting metadata requires both an input file and output file.")
       return
 
-    metadata = metadata_utils.Metadata()
-    metadata.video = metadata_utils.generate_spherical_xml(args.stereo_mode,
-                                                           args.crop)
-
-    if args.spatial_audio:
-      parsed_metadata = metadata_utils.parse_metadata(args.file[0], console)
-      if not metadata.audio:
-        spatial_audio_description = metadata_utils.get_spatial_audio_description(
-            parsed_metadata.num_audio_channels)
-        if spatial_audio_description.is_supported:
-          metadata.audio = metadata_utils.get_spatial_audio_metadata(
-              spatial_audio_description.order,
-              spatial_audio_description.has_head_locked_stereo)
-        else:
-          console("Audio has %d channel(s) and is not a supported "
-                  "spatial audio format." % (parsed_metadata.num_audio_channels))
-          return
-
-    if metadata.video:
-      metadata_utils.inject_metadata(args.file[0], args.file[1], metadata,
-                                     console)
-    else:
-      console("Failed to generate metadata.")
+    SingleInjection(args.file[0], args.file[1])
     return
 
   if len(args.file) > 0:
     for input_file in args.file:
       if args.spatial_audio:
         parsed_metadata = metadata_utils.parse_metadata(input_file, console)
-        metadata.audio = metadata_utils.get_spatial_audio_description(
-            parsed_metadata.num_channels)
+        metadata.audio = metadata_utils.get_spatial_audio_description(parsed_metadata.num_channels)
 
       metadata_utils.parse_metadata(input_file, console)
     return
