@@ -70,6 +70,11 @@ def main():
     "--inject",
     action="store_true",
     help="injects spatial media metadata into the first file specified (.mp4 or .mov) and saves the result to the second file specified")
+  parser.add_argument(
+    "-d",
+    "--directory",
+    action="store_true",
+    help="used in tandem with '-i'. Injects spatial media metadata into all files (.mp4 or .mov) in the first directory specified and saves the result to the second directory specified")
   video_group = parser.add_argument_group("Spherical Video")
   video_group.add_argument(
     "-s",
@@ -105,8 +110,17 @@ def main():
       console("Injecting metadata requires both an input file and output file.")
       return
 
-    SingleInjection(args.file[0], args.file[1])
-    return
+    if args.directory:
+      files = os.listdir(args.file[0])
+      for filename in files:
+        filesplit = filename.split(".")
+        if filesplit[-1].lower() == "mp4" or filesplit[-1].lower() == "mov":
+          SingleInjection(filename, args.file[1] + filename)
+      return
+
+    else:
+      SingleInjection(args.file[0], args.file[1])
+      return
 
   if len(args.file) > 0:
     for input_file in args.file:
